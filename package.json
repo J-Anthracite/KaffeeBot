@@ -1,0 +1,11 @@
+{
+	"name": "kaffeebot",
+	"version": "1.0.0",
+	"description": "Kaffee Bot",
+	"main": "KaffeeBot.js",
+	"scripts": {
+		"run": "node KaffeeBot.js"
+	},
+	"author": "James Belveal",
+	"license": "Apache 2.0"
+}
