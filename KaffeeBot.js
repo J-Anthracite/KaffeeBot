@@ -1,118 +1,104 @@
-console.log("Starting Kaffee Bot...\n");
+console.log("Starting Kaffee Bot Beta...\n");
 
 const Discord = require('discord.js');
 const bot = new Discord.Client();
 
-const HangMan = require('./HangMan');
+var plugins = [];
 
-const BubbleWrap = require('./BubbleWrap.js');
+var commands = new Map();
 
-var settings;
-var responses;
-var words;
+var CommandHelp = new Map();
 
-function loadConfig(filename, callback){
-	var fs = require('fs');
+var listeners = new Map();
 
-	fs.readFile('./config/' + filename + '.json', 'utf8', function(err, data){
-		if (!err){
-			var result = JSON.parse(data);
-			while (result == undefined){ }
-			callback(result);
-		}
-	});
+
+function LoadPlugins(callback){
+    var fs = require('fs');
+
+    console.log("Searching for Plugins...");
+
+    var found = 0;
+    var successfull = 0;
+    var failed = 0;
+
+    fs.readdir('./plugins/', (err, files) => {
+        var pluginfiles = files.filter((file) => { return file.slice(file.lastIndexOf('.')).toLowerCase() === '.js' });
+
+        found = pluginfiles.length;
+
+        pluginfiles.forEach((file) => {
+            try {
+                console.log('\nLoading: ' + file);
+
+                var plugin = require('./plugins/' + file);
+
+                //Get Plugin Commands
+                plugin.commands.forEach((func, name) => {
+                    if(commands.has(name) == false){
+                        commands.set(name, func);
+                    } else {
+                        console.log("Error! Plugin '" + plugin.name + "' has the command '" + name + "' but that command already exists!");
+                        throw('Overlapping Command Name: ' + name);
+                    }
+                });
+
+                //Get Plugin Help
+                plugin.help.forEach((message, name) => {
+                    if(CommandHelp.has(name) == false){
+                        CommandHelp.set(name, message);
+                    } else {
+                        console.log("Warning! Plugin '" + plugin.name + "' has the help message for '" + name + "' but a help message for that command already exists!");
+                    }
+                });
+
+                //Link the Functions for Starting and Stopping Listening
+                plugin.StartListening = StartListening;
+                plugin.StopListening = StopListening;
+                plugin.GetCommands = GetCommands;
+
+                console.log('Success: ' + plugin.name + " V" + (plugin.version).toFixed(1));
+
+                plugins.push(plugin);
+                successfull++;
+            }
+            catch (err) {
+                console.log("Failed Loading: " + file);
+                console.log(err);
+                failed++;
+            }
+        });
+
+        console.log("\nFound: " + found + "\nLoaded: " + successfull + "\nFailed: " + failed + "\nFinished Loading Plugins!\n");
+
+        callback();
+    });
 }
 
-//Load Settings
-loadConfig('settings', function(result){
-	settings = result;
-
-	loadConfig('responses', function(result){
-		responses = result;
-	
-		loadConfig('words', function(result){
-			words = result;
-
-			main();
-		});
-	});
-});
-
-function reload(channel){
-	console.log("Reloading Config...");
-
-	loadConfig('settings', function(result){
-		settings = result;
-	
-		loadConfig('responses', function(result){
-			responses = result;
-		
-			loadConfig('words', function(result){
-				words = result;
-				
-				console.log("Finished Reload!");
-				channel.send("Finished Reload!");
-			});
-		});
-	});
+function StartListening(channel, listener, onHear, callback){
+    if(listeners.has(channel)){
+        callback(false);
+    } else {
+        listeners.set(channel, {"listener": listener, "onHear": onHear});
+        callback(true);
+    }
 }
 
-function badWordScore(input, callback){
-	//var cleanedInput = input.replace(/[^a-zA-Z]/g, '');
-
-	var bannedWords = words.bannedWords;
-	bannedWords.forEach(function(word){
-		if (input.indexOf(word) != -1) {
-			callback(2);
-			return;
-		}
-	});
-
-	var bad = 0;
-	var badWords = words.badWords;
-
-	badWords.forEach(function(word){
-		var pos = 0;
-		while(input.indexOf(word, pos) != -1){
-			pos = 1 + input.indexOf(word, pos);
-			bad++;
-		}
-	});
-
-	if (bad == 0){
-		callback(0);
-	} else {
-		var wordCount = 0;
-
-		input.split(' ').forEach(function(word){
-			if(word.replace(/[^a-zA-Z]/g, '').length != 0){
-				wordCount++;
-			}
-		});
-
-		callback(bad / wordCount);
-	}
+function StopListening(channel, listenerToStop){
+    if(listeners.has(channel) && listeners.get(channel).listener === listenerToStop){
+        listeners.delete(channel);
+    }
 }
 
-function stateRule(num, message){
-	if (num == undefined || num.isNan || message == undefined || num <= 0 || num > responses.rules.length){
-		message.delete(3000);
-		message.channel.send(message.author + " Invalid use of the command! Please do ~rule 1-" + responses.rules.length).then(sentMessage => {sentMessage.delete(({ timeout: 3000 }));});
-	} else {
-		var msg = responses.rulePrefix + ' ' + responses.rules[num - 1];
-		msg = msg.replace("%s", message.guild.name);
-		msg = msg.replace("%u", message.auther);
-		msg = msg.replace("%n", num);
-
-		message.channel.send(msg);
-	}
+function GetCommands()
+{
+    return commands;
 }
 
 function main(){
 	bot.on('ready', () => {
 		console.log("\nConnected as " + bot.user.tag)
-		bot.user.setActivity('~help')
-	})
+		bot.user.setActivity('~help', { type: 'LISTENING' }).catch(console.error);
+	});
 
 	bot.on('message', (message) => {
 		if (message.author == bot.user) {
@@ -126,21 +112,14 @@ function main(){
 			
 			console.log("Command called '" + msg + "'");
 			
-			switch (args[0]){ //  253187393019052032
-				case 'ping':
-					if(message.author.id === "253187393019052032"){
-						message.channel.send(message.author + " I see you're approaching me!");
-					} else {
-						message.channel.send("Pong!");
-					}
-					break;
-				case 'hello':
+			switch (args[0]){
+                case 'hello':
                     if(message.author.id === '253187393019052032'){ //Angel
                         var d = new Date();
                         if((d.getMonth() + 1) == '11' && d.getDate() == '11'){
                             message.channel.send("Happy Birthday <@253187393019052032>!").then(sentmsg => { sentmsg.react('🎂') });
                         } else {
-                            message.channel.send('Hello <@253187393019052032> friend!');
+                            message.channel.send('Hello <@253187393019052032> my friend!');
                         }
                     }
                     else if (message.author.id === '320707233812054019'){ //J.Anthracite
@@ -155,81 +134,86 @@ function main(){
                         message.channel.send("Hello " + message.author.toString() + "!");
                     }
                     break;
-				case 'help':
-					require('./help.js').help(message, args[1]);
-					break;
-				case 'rule':
-					stateRule(args[1], message);
-					break;
-				case 'coffee':
-					message.channel.send("Here you go!\n" + responses.coffee[Math.floor(Math.random() * responses.coffee.length)]);
-					break;
-				case 'hangman':
-					HangMan.newGame(message, args[1]);
-					break;
-				case 'bubblewrap':
-					BubbleWrap.newGame(message);
-					break;
-				case 'pong':
-					message.channel.send("Hey! thats what I'm supposed to say...");
-					break;
-				case 'reload':
-					if (message.author.id === "320707233812054019"){ reload(message.channel); }
-					else { message.channel.send("Only J.Anthracite can reload me!"); }
-					break;
-				case 'restart':
+                case 'help':
+                    if(args[1] === 'all')
+                    {
+                        var helpmessage = "All Commands:\n";
+                        
+                        CommandHelp.forEach((helpmsg) => {
+                            helpmessage += helpmsg + "\n";
+                        });
+
+                        message.channel.send(helpmessage);
+                    } else {
+                        if(CommandHelp.has(args[1])){
+                            message.channel.send(CommandHelp.get(args[1]));
+                        } else {
+                            message.channel.send("I'm afraid I can't help with that...");
+                        }
+                    }
+                    break;
+				case 'forcequit':
 					if (message.author.id === '320707233812054019'){
-						bot.user.setActivity('Restarting...');
-						message.channel.send("Restarting...");
-						console.log("Restarting...");
+						bot.user.setActivity('Quiting...');
+						message.channel.send("Good Night!");
 						setTimeout(function(){ bot.destroy(); }, 1000);
 					}
-					else {
-						message.channel.send("Only J.Anthracite can restart me!");
-						}
-					break;
-				case 'forcequit':
-					if(message.author.id === "320707233812054019"){
-						bot.user.setActivity('Shutting Down...');
-						message.channel.send('Shutting Down...');
-						console.log('Shutting Down...');
-						setTimeout(function(){
-							bot.destroy();
-							process.exit(69);
-							}, 1000);
-					} else {
-						message.channel.send("Only J.Anthracite can make me Quit!");
-					}
+					else { message.channel.send("Only the server owner can restart me!"); }
 					break;
 				default:
-					message.channel.send("I'm afraid that's not a valid command <@" + message.author + ">");
-					break;
+                    if(commands.has(args[0])){
+                        var command = commands.get(args[0]);
+                        command(message, args);
+                    } else {
+                        message.channel.send("I'm afraid thats not a valid command " + message.author);
+                    }
+                    break;
 			}
-		} else {
-			HangMan.checkInput(message);
-		}
-		
-		//Check that message complies with rule 1
-		badWordScore(msg, function(score){
-			if (score == 2){
-				message.delete();
-				message.channel.send(message.author + "Your message was removed for containing a Banned Word!").then(sentMessage => {sentMessage.delete(({ timeout: 3000 }));});
-				console.log("Removed message containing banned word");
-			}
-			else if(score >= 0.5){
-				message.delete();
-				message.channel.send(message.author + "Your message was removed for containing too many Bad Words").then(sentMessage => {sentMessage.delete(({ timeout: 3000 }));});
-				console.log("Removed message containing to many bad words");
-			}
-		});
+        }
+        
+        //Log Message
+        //console.log(message);
 
-	});
+        //Check Listeners
+        if(listeners.has(message.channel.id)){
+            listeners.get(message.channel.id).onHear(message);
+        }
+
+    });
+    
+    bot.on('messageUpdate', (message) => {
+
+    });
+
+    bot.on('userUpdate', (user) => {
+
+    });
+
+    bot.on('messageReactionAdd', (user) => {
+
+    });
+
+    bot.on('messageReactionRemove', (user) => {
+
+    });
+
+    bot.on('messageReactionRemoveAll', (user) => {
+
+    });
+
+    bot.on('messageReactionRemoveEmoji', (user) => {
+
+    });
+
+    bot.on('messageDelete', (user) => {
+
+    });
 	
 	bot.on('error', (err) => {
 		console.log("Error Caught: " + err);
 	});
 
-	console.log("Logging In!");
+	console.log("Attemping To Login!");
 	var fs = require('fs');
 	fs.readFile('./config.json', (err, file) => {
 		if(!err){
@@ -238,3 +222,10 @@ function main(){
 		}
 	});
 }
+
+//Load Plugins
+LoadPlugins(() => {
+    //Start
+    main();
+});
+

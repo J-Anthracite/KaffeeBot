@@ -1,4 +1,4 @@
-@echo off
-title Test Kaffee
+@ECHO off
+TITLE Kaffee Bot
+
 node KaffeeBot.js
-pause
