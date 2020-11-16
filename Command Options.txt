@@ -1,0 +1,20 @@
+Command Config:
+
+Roles - The roles that can execute the command.
+	Values for the property, can only be one.
+		RoleID List - List of role IDs that can execute the command.
+		Owner Only - Only the server owner can execute the command.
+		Everyone - Anyone on the server can execute.
+
+Channel Whitelist:
+	A list of the channels the command can be execute in, default is empty which means it can be executed anywhere.
+		anywhere - Can be executed anywhere
+		admin - Can be executed in admin channels
+		whitelist - List of channel IDs
+
+UserCooldown:
+	The frequency the command can be execute, This is a time in seconds.
+	
+ChannelCooldown:
+
+ServerCooldown:

@@ -1,0 +1,18 @@
+{
+    "test" : {
+        "roles" : "owner",
+        "channels": "anywhere"
+    },
+    "hello" : {
+        "roles" : "everyone",
+        "channels": "anywhere"
+    },
+    "example": {
+        "roles": "everyone",
+        "channels": "anywhere"
+    },
+    "help": {
+        "roles": "everyone",
+        "channels": "anywhere"
+    }
+}

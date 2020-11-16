@@ -1,0 +1,29 @@
+Commands:
+
+ping
+
+curses:
+	add 'word' 'severity'
+	remove 'word'
+	check 'word'
+	
+
+responses:
+	add 
+	remove
+	check responseID
+	
+
+perms:
+perms commandID channels add (#channel, admin, anywhere)
+perms commandID channels remove #channel
+perms commandID channels check
+perms commandID channels reset
+	
+perms commandID roles add (@role, admin, everyone)
+perms commandID roles remove @role
+perms commandID roles check
+perms commandID roles reset
+
+help command subcommand
+
