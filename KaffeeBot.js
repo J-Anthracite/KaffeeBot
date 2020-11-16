@@ -135,8 +135,26 @@ function main(){
 					}
 					break;
 				case 'hello':
-					message.channel.send("Hello " + message.author + "!");
-					break;
+                    if(message.author.id === '253187393019052032'){ //Angel
+                        var d = new Date();
+                        if((d.getMonth() + 1) == '11' && d.getDate() == '11'){
+                            message.channel.send("Happy Birthday <@253187393019052032>!").then(sentmsg => { sentmsg.react('🎂') });
+                        } else {
+                            message.channel.send('Hello <@253187393019052032> friend!');
+                        }
+                    }
+                    else if (message.author.id === '320707233812054019'){ //J.Anthracite
+                        var d = new Date();
+                        if((d.getMonth() + 1) == '10' && d.getDate() == '23'){
+                            message.channel.send("Happy Birthday <@320707233812054019>!").then(sentmsg => { sentmsg.react('🎂') });
+                        } else {
+                            message.channel.send('Hello <@320707233812054019> my creator!');
+                        }
+                    }
+                    else {
+                        message.channel.send("Hello " + message.author.toString() + "!");
+                    }
+                    break;
 				case 'help':
 					require('./help.js').help(message, args[1]);
 					break;
@@ -156,19 +174,35 @@ function main(){
 					message.channel.send("Hey! thats what I'm supposed to say...");
 					break;
 				case 'reload':
-					if (message.guild.ownerID == message.author.id){ reload(message.channel); }
-					else { message.channel.send("Only the server owner can restart me!"); }
+					if (message.author.id === "320707233812054019"){ reload(message.channel); }
+					else { message.channel.send("Only J.Anthracite can reload me!"); }
 					break;
 				case 'restart':
-					if (message.guild.ownerID == message.author.id){
+					if (message.author.id === '320707233812054019'){
 						bot.user.setActivity('Restarting...');
 						message.channel.send("Restarting...");
+						console.log("Restarting...");
 						setTimeout(function(){ bot.destroy(); }, 1000);
 					}
-					else { message.channel.send("Only the server owner can restart me!"); }
+					else {
+						message.channel.send("Only J.Anthracite can restart me!");
+						}
+					break;
+				case 'forcequit':
+					if(message.author.id === "320707233812054019"){
+						bot.user.setActivity('Shutting Down...');
+						message.channel.send('Shutting Down...');
+						console.log('Shutting Down...');
+						setTimeout(function(){
+							bot.destroy();
+							process.exit(69);
+							}, 1000);
+					} else {
+						message.channel.send("Only J.Anthracite can make me Quit!");
+					}
 					break;
 				default:
-					message.channel.send("I'm afraid thats not a valid command " + message.author);
+					message.channel.send("I'm afraid that's not a valid command <@" + message.author + ">");
 					break;
 			}
 		} else {
@@ -195,7 +229,7 @@ function main(){
 		console.log("Error Caught: " + err);
 	});
 
-	console.log("Attemping To Login!");
+	console.log("Logging In!");
 	var fs = require('fs');
 	fs.readFile('./config.json', (err, file) => {
 		if(!err){

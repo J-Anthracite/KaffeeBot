@@ -209,6 +209,7 @@ exports.checkInput = function checkInput(context){
 
                         //Replace %u
                         message = message.replace("%u", context.author);
+                        context.channel.send("The word was: **" + HM_Word.toUpperCase() + "**");
                         context.channel.send(message);
                         
                         cleanupGame();
@@ -223,7 +224,7 @@ exports.checkInput = function checkInput(context){
 
         //If the input is longer than one char check if its exit or quit
         else if (msg == "exit" || msg == "quit"){
-            context.channel.send("Alrighty! Game Quit");
+            context.channel.send("Alrighty! Game Quit.");
             DisplayMessage.delete();
             context.delete();
             cleanupGame();
