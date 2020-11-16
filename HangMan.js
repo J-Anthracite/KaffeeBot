@@ -97,7 +97,7 @@ function setupNewGame(context){
             break;
     }
 
-    console.log("Starting new game with the Word '" + HM_Word +"'");
+    //console.log("Starting new game with the Word '" + HM_Word +"'");
     
     updateGameDisplay();
 }
@@ -230,16 +230,3 @@ exports.checkInput = function checkInput(context){
         }
     }
 }
-
-/* Old Code
-
-context.channel.send("Send a letter to make a guess!\n" + HM_Config.states[0] + "\nWord:" + " -".repeat(HM_Word.length)).then( sentMessage => { HM_Message = sentMessage; } );
-HM_Message.edit(HM_Config.states[Guesses] + "\nWord:" + getGuessText() + "\nYou already guessed " + letter.toUpperCase());
-HM_Message.edit(HM_Config.states[Guesses] + "\nWord:" + getGuessText() + "\nContains " + letter.toUpperCase());
-HM_Message.edit(HM_Config.states[Guesses] + "\nWord:" + getGuessText());
-var message = HM_Config.win_responses.normal[Math.floor(Math.random() * HM_Config.win_responses.normal.length)];
-HM_Message.edit(HM_Config.states[Guesses] + "\nWord:" + getGuessText());
-var message = HM_Config.lose_responses.normal[Math.floor(Math.random() * HM_Config.lose_responses.normal.length)];
-HM_Message.edit(HM_Config.states[Guesses] + "\nWord:" + getGuessText() + "\nDoesn't Contain " + letter.toUpperCase());
-
-*/

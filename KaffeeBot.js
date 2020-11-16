@@ -5,6 +5,8 @@ const bot = new Discord.Client();
 
 const HangMan = require('./HangMan');
 
+const BubbleWrap = require('./BubbleWrap.js');
+
 var settings;
 var responses;
 var words;
@@ -95,7 +97,7 @@ function badWordScore(input, callback){
 function stateRule(num, message){
 	if (num == undefined || num.isNan || message == undefined || num <= 0 || num > responses.rules.length){
 		message.delete(3000);
-		message.channel.send(message.author + " Invalid use of the command! Please do ~rule 1-" + responses.rules.length).then(sentMessage => {sentMessage.delete(3000);});
+		message.channel.send(message.author + " Invalid use of the command! Please do ~rule 1-" + responses.rules.length).then(sentMessage => {sentMessage.delete(({ timeout: 3000 }));});
 	} else {
 		var msg = responses.rulePrefix + ' ' + responses.rules[num - 1];
 		msg = msg.replace("%s", message.guild.name);
@@ -121,9 +123,16 @@ function main(){
 		
 		if (msg[0] == "~"){
 			args = msg.slice(1).split(' ');
-			switch (args[0]){
+			
+			console.log("Command called '" + msg + "'");
+			
+			switch (args[0]){ //  253187393019052032
 				case 'ping':
-					message.channel.send("Pong!");
+					if(message.author.id === "253187393019052032"){
+						message.channel.send(message.author + " I see you're approaching me!");
+					} else {
+						message.channel.send("Pong!");
+					}
 					break;
 				case 'hello':
 					message.channel.send("Hello " + message.author + "!");
@@ -134,14 +143,14 @@ function main(){
 				case 'rule':
 					stateRule(args[1], message);
 					break;
-				case 'what':
-					message.channel.send("You never heard of tuber simulator!?!");
-					break;
 				case 'coffee':
 					message.channel.send("Here you go!\n" + responses.coffee[Math.floor(Math.random() * responses.coffee.length)]);
 					break;
 				case 'hangman':
 					HangMan.newGame(message, args[1]);
+					break;
+				case 'bubblewrap':
+					BubbleWrap.newGame(message);
 					break;
 				case 'pong':
 					message.channel.send("Hey! thats what I'm supposed to say...");
@@ -151,7 +160,11 @@ function main(){
 					else { message.channel.send("Only the server owner can restart me!"); }
 					break;
 				case 'restart':
-					if (message.guild.ownerID == message.author.id){ message.channel.send("Restarting..."); setTimeout(function(){ throw 'Restart Called!'; }, 1000); }
+					if (message.guild.ownerID == message.author.id){
+						bot.user.setActivity('Restarting...');
+						message.channel.send("Restarting...");
+						setTimeout(function(){ bot.destroy(); }, 1000);
+					}
 					else { message.channel.send("Only the server owner can restart me!"); }
 					break;
 				default:
@@ -166,20 +179,25 @@ function main(){
 		badWordScore(msg, function(score){
 			if (score == 2){
 				message.delete();
-				message.channel.send(message.author + "Your message was removed for containing a Banned Word!").then(sentMessage => {sentMessage.delete(3000);});
+				message.channel.send(message.author + "Your message was removed for containing a Banned Word!").then(sentMessage => {sentMessage.delete(({ timeout: 3000 }));});
 				console.log("Removed message containing banned word");
 			}
 			else if(score >= 0.5){
 				message.delete();
-				message.channel.send(message.author + "Your message was removed for containing too many Bad Words").then(sentMessage => {sentMessage.delete(3000);});
+				message.channel.send(message.author + "Your message was removed for containing too many Bad Words").then(sentMessage => {sentMessage.delete(({ timeout: 3000 }));});
 				console.log("Removed message containing to many bad words");
 			}
 		});
 
 	});
+	
+	bot.on('error', (err) => {
+		console.log("Error Caught: " + err);
+	});
 
+	console.log("Attemping To Login!");
 	var fs = require('fs');
-	file = fs.readFile('./config.json', (err, file) => {
+	fs.readFile('./config.json', (err, file) => {
 		if(!err){
 			var config = JSON.parse(file);
 			bot.login(config.token);
