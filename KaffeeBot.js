@@ -177,6 +177,19 @@ function main(){
 					if (message.author.id === "320707233812054019"){ reload(message.channel); }
 					else { message.channel.send("Only J.Anthracite can reload me!"); }
 					break;
+				case 'update':
+					if (message.author.id === '320707233812054019'){
+						bot.user.setActivity('Updating...');
+						message.channel.send('Updating...');
+						console.log("Updating...");
+						require('fs').writeFile('./temp/UPDATE', '', () => {
+							bot.destroy();
+						});
+					}
+					else {
+						message.channel.send("Only J.Anthracite can update me!");
+					}
+					break;
 				case 'restart':
 					if (message.author.id === '320707233812054019'){
 						bot.user.setActivity('Restarting...');
@@ -186,17 +199,16 @@ function main(){
 					}
 					else {
 						message.channel.send("Only J.Anthracite can restart me!");
-						}
+					}
 					break;
 				case 'forcequit':
 					if(message.author.id === "320707233812054019"){
 						bot.user.setActivity('Shutting Down...');
 						message.channel.send('Shutting Down...');
 						console.log('Shutting Down...');
-						setTimeout(function(){
+						require('fs').writeFile('./temp/QUIT', '', () => {
 							bot.destroy();
-							process.exit(69);
-							}, 1000);
+						});
 					} else {
 						message.channel.send("Only J.Anthracite can make me Quit!");
 					}

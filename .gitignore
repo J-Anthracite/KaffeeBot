@@ -9,3 +9,6 @@ config.json
 
 #Each instance needs it's own config
 /config/
+
+#The temp directory stores runtime stuff and shouldn't be stored
+/temp/
