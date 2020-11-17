@@ -181,7 +181,6 @@ function main(){
 					if (message.author.id === '320707233812054019'){
 						bot.user.setActivity('Updating...');
 						message.channel.send('Updating...');
-						console.log("Updating...");
 						require('fs').writeFile('./temp/UPDATE', '', () => {
 							bot.destroy();
 						});
@@ -205,7 +204,6 @@ function main(){
 					if(message.author.id === "320707233812054019"){
 						bot.user.setActivity('Shutting Down...');
 						message.channel.send('Shutting Down...');
-						console.log('Shutting Down...');
 						require('fs').writeFile('./temp/QUIT', '', () => {
 							bot.destroy();
 						});

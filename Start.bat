@@ -18,7 +18,6 @@ IF EXIST "%CD%"\temp\UPDATE GOTO UPDATE
 REM Start Kaffee Bot
 :RUN
 ECHO.
-ECHO Starting Kaffee Bot!
 node KaffeeBot.js
 GOTO START
 
@@ -26,7 +25,7 @@ REM Checkout the latest Master Branch.
 :UPDATE
 ECHO.
 ECHO Updating...
-REM git checkout master
+git pull
 IF EXIST "%CD%"\temp\UPDATE (
     DEL "%CD%"\temp\UPDATE
 )

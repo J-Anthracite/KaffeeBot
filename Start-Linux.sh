@@ -17,11 +17,13 @@ while [ ! -f "./temp/QUIT" ]; do
 	#If the file UPDATE exists
 	if [ -f "./temp/UPDATE" ]; then
 		echo Updating...
-		sleep 2
+		git pull
 		echo Finished Update!
 	fi
 
 	#Run Kaffee Bot
-	echo Starting Kaffee Bot...
 	node KaffeeBot.js
 done
+
+echo Quiting Kaffee Bot Loop...
+sleep 15
