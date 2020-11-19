@@ -29,7 +29,6 @@ git pull
 IF EXIST "%CD%"\temp\UPDATE (
     DEL "%CD%"\temp\UPDATE
 )
-pause
 ECHO Finished Updating!
 GOTO START
 
