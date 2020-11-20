@@ -37,15 +37,33 @@ function roll(context, args){
             context.channel.send(":game_die: You rolled **" + (Math.floor(Math.random() * 10) * 10) + "%**");
             break;
         default:
-            context.channel.send("You must specify which Die! Do `~help roll` for more info.");
+            context.channel.send("You must specify a valid Die! Do `~help roll` for more info.");
             break;
     }
 }
 
 //Commands
-exports.commands.set('bubblewrap', bubblewrap);
-exports.commands.set('roll', roll)
+exports.commands.set('bubblewrap', {
+    "func": bubblewrap,
+    "help": "The **BubbleWrap** Command Dispenses a roll of BubbleWrap for you to Pop!"
+});
+
+exports.commands.set('roll', {
+    "func": roll,
+    "help": "The **Roll** Command rolls the Specified Die. Example: `~roll d20`\nValid Dice: D4, D6, D8, D10, D12, D20, Percentile"
+});
+
+
+
+//exports.AddCommand('name', function, 'Help Message');
+
+/*
+{
+    "function": function,
+    "help": "The Help Message for the Command."
+}
+*/
 
 //Help
-exports.help.set('bubblewrap', "The **BubbleWrap** Command Dispenses a roll of BubbleWrap for you to Pop!");
-exports.help.set('roll', "The **Roll** Command rolls the Specified Die. Example: `~roll d20`\nValid Dice: D4, D6, D8, D10, D12, D20, Percentile");
+//exports.help.set('bubblewrap', "The **BubbleWrap** Command Dispenses a roll of BubbleWrap for you to Pop!");
+//exports.help.set('roll', "The **Roll** Command rolls the Specified Die. Example: `~roll d20`\nValid Dice: D4, D6, D8, D10, D12, D20, Percentile");

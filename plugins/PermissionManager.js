@@ -181,7 +181,10 @@ function OnEditorInput(context){
 }
 
 //Export Commands
-exports.commands.set('editperm', InitiatePermissionEditor);
+exports.commands.set('editperm', {
+    "func": InitiatePermissionEditor,
+    "help": "Opens the Permission Editor. Example: `~editperm ping`"
+});
 
 /*
 

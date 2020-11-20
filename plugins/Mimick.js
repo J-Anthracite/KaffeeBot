@@ -34,7 +34,7 @@ function toggleMimick(context){
 }
 
 //Export Commands
-exports.commands.set('mimick', toggleMimick);
-
-//Help
-exports.help.set('mimick', "The **Mimick** Command repeats all of your messages!");
+exports.commands.set('mimick', {
+    "func": toggleMimick,
+    "help": "The **Mimick** command repeats all of your messages!"
+});

@@ -9,3 +9,6 @@ config.json
 
 #Each instance needs it's own config
 /config/
+
+#The temp folder is auto generated
+/temp/
