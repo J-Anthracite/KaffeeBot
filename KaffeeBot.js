@@ -1,7 +1,6 @@
 console.log("Starting Kaffee Bot Beta...\n");
 
 const Discord = require('discord.js');
-//const { config } = require('process');
 const bot = new Discord.Client();
 const fs = require('fs');
 
@@ -12,6 +11,14 @@ var botconfig = {};
 var plugins = [];
 
 var commands = new Map();
+
+//The Discord Channel for bot Logs
+var AdminLogChannel;
+
+var GuildLogChannels = new Map();
+
+//Temp
+GuildLogChannels.set('788236129584545812', '793408624029990923');
 
 var help = new Map();
 
@@ -66,8 +73,13 @@ function LoadPlugins(callback){
                 plugin.StartListening = StartListening;
 				plugin.StopListening = StopListening;
 				
+				//Command Getter/Setter
 				plugin.GetCommands = GetCommands;
 				plugin.AddCommand = AddCommand;
+
+				//Loggers
+				plugin.GuildLog = GuildLog;
+				plugin.AdminLog = AdminLog;
 
                 console.log('Success: ' + plugin.name + " V" + (plugin.version).toFixed(1));
 
@@ -178,13 +190,13 @@ function uptime(context)
     context.channel.send(":stopwatch: **I've been online for:** " + days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's');
 }
 
-function DisableInGuild(context)
-{
+function DisableInGuild(context){
 	if(context.author.id === context.guild.ownerID){
 		if(context.mentions.has(bot.user.id)){
 			if(DisabledGuilds.includes(context.guild.id) == false){
 				DisabledGuilds.push(context.guild.id);
 			}
+			GuildLog(":x: Bot Disabled! Do `~enable` followed by <@" + bot.user.id + "> to Enable.", context.guild.id);
 			context.channel.send('<@' + bot.user.id + '> is now Disabled in this Server. Do `~enable` followed by <@' + bot.user.id + '> to Enable.');
 			fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
 		}
@@ -224,10 +236,45 @@ function LoadConfig(){
 	}
 }
 
+//Sends a Log to the Log Channel for the given Guild.
+function GuildLog(message, guildID){
+	if(guildID == undefined){
+		console.log("Must specify guild for Guild Log.");
+	} else {
+		let channelID = GuildLogChannels.get(guildID);
+		if(channelID != undefined){
+			bot.channels.fetch(channelID).then((channel) => {
+				channel.send(message);
+			}).catch((err) => {
+				console.log("Failed to get Guild Log Channel.");
+			});
+		}
+	}
+}
+
+//Logs a message in the Admin Log Channel.
+function AdminLog(message){
+	if(AdminLogChannel == undefined){
+		if(config.adminLogChannel == undefined){
+			console.log("Bot missing Admin Log Channel ID. Please add a Channel ID the Bot has access to in config.json with the key 'adminLogChannel'");
+		} else {
+			bot.channels.fetch(config.adminLogChannel).then((channel) => {
+				AdminLogChannel = channel;
+				AdminLogChannel.send(message);
+			}).catch((err) => {
+				console.log("Failed to get Admin Log Channel. Error: " + err);
+			});
+		}
+	} else {
+		AdminLogChannel.send(message);
+	}
+}
+
 function main(){
 	bot.on('ready', () => {
 		console.log("\nConnected as " + bot.user.tag)
 		bot.user.setActivity('~help', { type: 'LISTENING' }).catch(console.error);
+		AdminLog(":white_check_mark: Bot went Online!");
 	});
 
 	bot.on('message', (message) => {
@@ -248,6 +295,7 @@ function main(){
 					fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
 					
 					message.channel.send("Alright I'm Enabled! <@" + bot.user.id + ">");
+					GuildLog(":white_check_mark: Bot Enabled!", message.guild.id);
 					message.react('✅');
 				}
 				return;
@@ -264,6 +312,7 @@ function main(){
 						bot.user.setActivity('Restarting...');
 						message.channel.send("Restarting...");
 						console.log("Restarting...");
+						AdminLog(":arrows_clockwise: Bot Restarting...");
 						setTimeout(function(){ bot.destroy(); }, 1000);
 					}
 					else {
@@ -274,6 +323,7 @@ function main(){
 					if(message.author.id === botconfig.admin){
 						bot.user.setActivity('Shutting Down...');
 						message.channel.send('Shutting Down...');
+						AdminLog(":x: Bot Shutting Down...");
 						fs.writeFile('./temp/QUIT', '', () => {
 							bot.destroy();
 						});
@@ -371,6 +421,17 @@ LoadBotConfig(() => {
 	AddCommand('disable', {
 		"func": DisableInGuild,
 		"help": "Disables the @'ed bot in the current Guild. Example: `~disable @botname`"
+	});
+
+	AddCommand('setlog', {
+		//TODO: This is temporary until the Config system is implemented.
+		"func": (context, args) => { GuildLogChannels.set(context.guild.id, args[1]); context.react('✅'); },
+		"help": "Sets the Log Channel for this Server."
+	});
+
+	AddCommand('clearlog', {
+		"func": (context) => { GuildLogChannels.delete(context.guild.id); context.react('✅'); },
+		"help": "Clears the Log Channel for this Server."
 	});
 
 	AddCommand('ping', {

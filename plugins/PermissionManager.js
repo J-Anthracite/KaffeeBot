@@ -98,14 +98,15 @@ function OnEditorInput(context){
     var input = context.content.toLowerCase().split(' ');
 
     if(input[0] === 'save'){
+        exports.StopListening(context.channel.id, exports.name);
+        exports.GuildLog("Permissions for the command `~" + SelectedCommand + "` changed.", permdisplay.guild.id);
         permdisplay.edit("Permissions for `~" + SelectedCommand + "` Saved!");
         permdisplay = undefined;
-        exports.StopListening(context.channel.id, exports.name);
     }
     else if (input[0] === 'cancel'){
+        exports.StopListening(context.channel.id, exports.name);
         permdisplay.edit('Permission Editing Cancelled!');
         permdisplay = undefined;
-        exports.StopListening(context.channel.id, exports.name);
     }
     else if (input[0] === 'allow') {
         if (input[1] != undefined){
