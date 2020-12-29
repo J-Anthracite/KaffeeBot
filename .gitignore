@@ -1,9 +1,6 @@
 #The node modules are not mine to replicate
 /node_modules/
 
-#Is auto generated and is not necessary
-package-lock.json
-
 #This contains the private bot token so this shouldn't be stored
 config.json
 
@@ -12,3 +9,6 @@ config.json
 
 #The temp folder is auto generated
 /temp/
+
+#Guilds that should not be responded to.
+DisabledGuilds.json

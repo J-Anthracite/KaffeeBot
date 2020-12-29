@@ -1,8 +1,11 @@
 console.log("Starting Kaffee Bot Beta...\n");
 
 const Discord = require('discord.js');
-const { config } = require('process');
+//const { config } = require('process');
 const bot = new Discord.Client();
+const fs = require('fs');
+
+var config = {};
 
 var botconfig = {};
 
@@ -14,8 +17,13 @@ var help = new Map();
 
 var listeners = new Map();
 
+var ReactListeners = new Map();
+
+//Guilds the Bot is currently Disabled in.
+var DisabledGuilds = [];
+
 function LoadBotConfig(callback){
-	require('fs').readFile('./config.json', (err, file) => {
+	fs.readFile('./config.json', (err, file) => {
 		if(err){
 			console.log("Failed Loading 'config.json'!");
 		} else {
@@ -26,8 +34,6 @@ function LoadBotConfig(callback){
 }
 
 function LoadPlugins(callback){
-    var fs = require('fs');
-
     console.log("Searching for Plugins...");
 
     var found = 0;
@@ -55,15 +61,6 @@ function LoadPlugins(callback){
                         throw('Overlapping Command Name: ' + name);
                     }
                 });
-
-                //Get Plugin Help
-                // plugin.help.forEach((message, name) => {
-                //     if(help.has(name) == false){
-                //         help.set(name, message);
-                //     } else {
-                //         console.log("Warning! Plugin '" + plugin.name + "' has the help message for '" + name + "' but a help message for that command already exists!");
-                //     }
-                // });
 
                 //Link the Functions for Starting and Stopping Listening
                 plugin.StartListening = StartListening;
@@ -181,6 +178,52 @@ function uptime(context)
     context.channel.send(":stopwatch: **I've been online for:** " + days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's');
 }
 
+function DisableInGuild(context)
+{
+	if(context.author.id === context.guild.ownerID){
+		if(context.mentions.has(bot.user.id)){
+			if(DisabledGuilds.includes(context.guild.id) == false){
+				DisabledGuilds.push(context.guild.id);
+			}
+			context.channel.send('<@' + bot.user.id + '> is now Disabled in this Server. Do `~enable` followed by <@' + bot.user.id + '> to Enable.');
+			fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
+		}
+	} else {
+		context.channel.send("Only the Server Owner can Disable Me!");
+	}
+}
+
+function LoadConfig(){
+	//Ensure config file exists
+	if(!fs.existsSync('./DisabledGuilds.json')){
+		fs.writeFileSync('./DisabledGuilds.json', '[]');
+	}
+
+	//Load Disabled Guilds
+	var file = fs.readFileSync('./DisabledGuilds.json');
+
+	if(file != undefined){
+		let buffer = JSON.parse(file);
+		if(buffer != undefined){
+			DisabledGuilds = buffer;
+		}
+	}
+
+	file = undefined;
+
+	//Load Config File
+	var file = fs.readFileSync('./config.json');
+	
+	if(file != undefined){
+		let buffer = JSON.parse(file);
+		if(buffer != undefined){
+			config = buffer;
+		} else {
+			console.log("Failed Loading config.json!");
+		}
+	}
+}
+
 function main(){
 	bot.on('ready', () => {
 		console.log("\nConnected as " + bot.user.tag)
@@ -196,6 +239,19 @@ function main(){
 		
 		if (msg[0] == "~"){
 			args = msg.slice(1).split(' ');
+
+			//Check bot is not Disabled in Guild.
+			if(DisabledGuilds.includes(message.guild.id)){
+				if(args[0] === 'enable' && message.mentions.has(bot.user.id)){			
+					let i = DisabledGuilds.indexOf(message.guild.id);
+					DisabledGuilds.splice(i, i + 1);
+					fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
+					
+					message.channel.send("Alright I'm Enabled! <@" + bot.user.id + ">");
+					message.react('✅');
+				}
+				return;
+			}
 			
 			console.log("Command called '" + msg + "'");
 			
@@ -218,7 +274,7 @@ function main(){
 					if(message.author.id === botconfig.admin){
 						bot.user.setActivity('Shutting Down...');
 						message.channel.send('Shutting Down...');
-						require('fs').writeFile('./temp/QUIT', '', () => {
+						fs.writeFile('./temp/QUIT', '', () => {
 							bot.destroy();
 						});
 					} else {
@@ -280,13 +336,14 @@ function main(){
 	});
 
 	console.log("Attemping To Login!");
-	var fs = require('fs');
-	fs.readFile('./config.json', (err, file) => {
-		if(!err){
-			var config = JSON.parse(file);
-			bot.login(config.token);
-		}
-	});
+
+	// fs.readFile('./config.json', (err, file) => {
+	// 	if(!err){
+	// 		var config = JSON.parse(file);
+	// 		bot.login(config.token);
+	// 	}
+	// });
+	bot.login(config.token);
 }
 
 //Load Bot Config
@@ -294,6 +351,27 @@ LoadBotConfig(() => {
 
 	//Set Basic Commands
 	//AddCommand('help', Help, 'Do `~help` to see a list of commands or `~help command` to see help for that command.');
+
+	AddCommand('listeners', {
+		"func": (context) => {
+			if(listeners.has(context.channel.id)){
+				context.channel.send("**Current Listeners Here:**\n" + listeners.get(context.channel.id).listener);
+			} else {
+				context.channel.send("**No Current Listeners Here.**");
+			}
+		},
+		"help": "Displays the Current Listeners to the Channel."
+	});
+
+	AddCommand('enable', {
+		"func": (context) => { context.react('✅') },
+		"help": "Enables the @'ed bot in the current Guild. Example: `~enable @botname`"
+	});
+
+	AddCommand('disable', {
+		"func": DisableInGuild,
+		"help": "Disables the @'ed bot in the current Guild. Example: `~disable @botname`"
+	});
 
 	AddCommand('ping', {
 		"func": (context) => { context.channel.send(':ping_pong: Pong!'); },
@@ -312,10 +390,10 @@ LoadBotConfig(() => {
 
 	//Load Plugins
 	LoadPlugins(() => {
+		//Load Config
+		LoadConfig();
 
 		//Start Bot
 		main();
 	});
 });
-
-
