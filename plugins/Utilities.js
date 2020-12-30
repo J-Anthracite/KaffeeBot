@@ -1,17 +1,26 @@
 //Utility Plugin V1.0
-var exports = module.exports = {};
+const link = module.exports = {};
 
-var commands = new Map();
+link.name = "Utilities";
+link.version = 1.0;
+link.commands = new Map();
 
-exports.name = "Utilities";
-exports.version = 1.0;
-exports.commands = new Map();
-exports.help = new Map();
+function GetUptime(context){
+    if(link.client){
+        let TotalSeconds = (link.client.uptime / 1000);
+        let days = Math.floor(TotalSeconds / 86400);
+        TotalSeconds %= 86400;
+        let hours = Math.floor(TotalSeconds / 3600);
+        TotalSeconds %= 3600;
+        let minutes = Math.floor(TotalSeconds / 60);
+        let seconds = Math.floor(TotalSeconds % 60);
 
-
+        context.channel.send(":stopwatch: **I've been online for:** " + days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's');
+    }
+}
 
 //Export Commands
-// exports.commands.set('uptime', {
-//     "func": uptime,
-//     "help": "Displays how long the bot has been Online."
-// });
+link.commands.set('uptime', {
+    "func": GetUptime,
+    "help": "Displays how long the bot has been Online."
+});

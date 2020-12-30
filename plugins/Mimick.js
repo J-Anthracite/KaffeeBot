@@ -1,12 +1,9 @@
 //Mimicking Plugin V1.0
-var exports = module.exports = {};
+var link = module.exports = {};
 
-var commands = new Map();
-
-exports.name = "Mimick";
-exports.version = 1.0;
-exports.commands = new Map();
-exports.help = new Map();
+link.name = "Mimick";
+link.version = 1.0;
+link.commands = new Map();
 
 var isMimicking = false;
 
@@ -19,10 +16,10 @@ function mimick(context){
 function toggleMimick(context){
     if(isMimicking){
         context.channel.send("Alright, I'll stop...");
-        exports.StopListening(context.channel.id, exports.name);
+        link.StopListening(context.channel.id, link.name);
         isMimicking = false;
     } else {
-        exports.StartListening(context.channel.id, exports.name, mimick, (success) => {
+        link.StartListening(context.channel.id, link.name, mimick, (success) => {
             if(success){
                 context.channel.send("Initiating Annoyance! Use `~mimick` again to stop.");
                 isMimicking = true;
@@ -34,7 +31,7 @@ function toggleMimick(context){
 }
 
 //Export Commands
-exports.commands.set('mimick', {
+link.commands.set('mimick', {
     "func": toggleMimick,
     "help": "The **Mimick** command repeats all of your messages!"
 });

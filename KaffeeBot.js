@@ -1,12 +1,11 @@
 console.log("Starting Kaffee Bot Beta...\n");
 
 const Discord = require('discord.js');
-const bot = new Discord.Client();
+const client = new Discord.Client();
 const fs = require('fs');
 
+//The Bot Config
 var config = {};
-
-var botconfig = {};
 
 var plugins = [];
 
@@ -29,12 +28,14 @@ var ReactListeners = new Map();
 //Guilds the Bot is currently Disabled in.
 var DisabledGuilds = [];
 
+//Loads the Bot Config File - Always stored in the Root.
+//Contains the Token, Admin User ID, Admin Log Channel ID, Plugin Config Dir.
 function LoadBotConfig(callback){
-	fs.readFile('./config.json', (err, file) => {
+	fs.readFile('./config.json', (err, buffer) => {
 		if(err){
 			console.log("Failed Loading 'config.json'!");
 		} else {
-			botconfig = JSON.parse(file);
+			config = JSON.parse(buffer);
 			callback();
 		}
 	});
@@ -43,9 +44,9 @@ function LoadBotConfig(callback){
 function LoadPlugins(callback){
     console.log("Searching for Plugins...");
 
-    var found = 0;
-    var successfull = 0;
-    var failed = 0;
+    let found = 0;
+    let successfull = 0;
+    let failed = 0;
 
     fs.readdir('./plugins/', (err, files) => {
         var pluginfiles = files.filter((file) => { return file.slice(file.lastIndexOf('.')).toLowerCase() === '.js' });
@@ -81,6 +82,13 @@ function LoadPlugins(callback){
 				plugin.GuildLog = GuildLog;
 				plugin.AdminLog = AdminLog;
 
+				//Config
+				plugin.LoadConfig = LoadConfig;
+				plugin.SaveConfig = SaveConfig;
+				
+				//Pass Bot Client Reference TODO: Maybe don't do this
+				plugin.client = client;
+
                 console.log('Success: ' + plugin.name + " V" + (plugin.version).toFixed(1));
 
                 plugins.push(plugin);
@@ -97,6 +105,62 @@ function LoadPlugins(callback){
 
         callback();
     });
+}
+
+//Load Plugin Config
+function LoadConfig(parent, name, guildID, callback){
+	//Get Config Directory
+	let dir = './';
+	if(config.configDir != undefined){
+		dir = config.configDir;
+	}
+
+	//If guildID is set then we look for per guild config
+	if(guildID != undefined){
+		dir += guildID + "/";
+	}
+
+	//Add Config Name
+	dir += parent.toLowerCase() + '.' + name.toLowerCase() + '.json';
+
+	//Try and Read
+	fs.readFile(dir, (err, buffer) => {
+		if(err){
+			callback("Failed to Load Config", []);
+		} else {
+			let json = JSON.parse(buffer);
+			callback(undefined, json);
+		}
+	});
+}
+
+//Save Plugin Config
+function SaveConfig(parent, name, json, guildID){
+	//Get Config Directory
+	let dir = './config/';
+	if(config.configDir != undefined){
+		dir = config.configDir;
+	}
+
+	//If guildID is set then we save config per guild
+	if(guildID != undefined){
+		dir += guildID + "/";
+
+		//Ensure Folder Exsists
+		if(!fs.existsSync(dir)){
+			fs.mkdir(dir, (err) => {
+				if(err){
+					console.log(err);
+				}
+			});
+		}
+	}
+
+	//Append Config File Name
+	dir += parent.toLowerCase() + '.' + name.toLowerCase() + '.json';
+
+	//Write Config File
+	fs.writeFile(dir, JSON.stringify(json), (err) => { if(err){ console.log(err); } });
 }
 
 //Add a Command to the Map of Commands, However plugins cannot call this when initialzing.
@@ -177,64 +241,25 @@ function Help(context, args)
 	}
 }
 
-//Prints the Update for the Bot
-function uptime(context)
-{
-	let totalSeconds = (bot.uptime / 1000);
-	let days = Math.floor(totalSeconds / 86400);
-	totalSeconds %= 86400;
-	let hours = Math.floor(totalSeconds / 3600);
-	totalSeconds %= 3600;
-	let minutes = Math.floor(totalSeconds / 60);
-	let seconds = Math.floor(totalSeconds % 60);
-    context.channel.send(":stopwatch: **I've been online for:** " + days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's');
-}
-
-function DisableInGuild(context){
+function DisableBotInGuild(context){
 	if(context.author.id === context.guild.ownerID){
-		if(context.mentions.has(bot.user.id)){
+		if(context.mentions.has(client.user.id)){
 			if(DisabledGuilds.includes(context.guild.id) == false){
 				DisabledGuilds.push(context.guild.id);
 			}
-			GuildLog(":x: Bot Disabled! Do `~enable` followed by <@" + bot.user.id + "> to Enable.", context.guild.id);
-			context.channel.send('<@' + bot.user.id + '> is now Disabled in this Server. Do `~enable` followed by <@' + bot.user.id + '> to Enable.');
-			fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
+			GuildLog(":x: Bot Disabled! Do `~enable` followed by <@" + client.user.id + "> to Enable.", context.guild.id);
+			context.channel.send('<@' + client.user.id + '> is now Disabled in this Server. Do `~enable` followed by <@' + client.user.id + '> to Enable.');
+
+			//fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
+
+			SaveConfig('core', 'disabledguilds', DisabledGuilds);
 		}
 	} else {
 		context.channel.send("Only the Server Owner can Disable Me!");
 	}
 }
 
-function LoadConfig(){
-	//Ensure config file exists
-	if(!fs.existsSync('./DisabledGuilds.json')){
-		fs.writeFileSync('./DisabledGuilds.json', '[]');
-	}
 
-	//Load Disabled Guilds
-	var file = fs.readFileSync('./DisabledGuilds.json');
-
-	if(file != undefined){
-		let buffer = JSON.parse(file);
-		if(buffer != undefined){
-			DisabledGuilds = buffer;
-		}
-	}
-
-	file = undefined;
-
-	//Load Config File
-	var file = fs.readFileSync('./config.json');
-	
-	if(file != undefined){
-		let buffer = JSON.parse(file);
-		if(buffer != undefined){
-			config = buffer;
-		} else {
-			console.log("Failed Loading config.json!");
-		}
-	}
-}
 
 //Sends a Log to the Log Channel for the given Guild.
 function GuildLog(message, guildID){
@@ -243,7 +268,7 @@ function GuildLog(message, guildID){
 	} else {
 		let channelID = GuildLogChannels.get(guildID);
 		if(channelID != undefined){
-			bot.channels.fetch(channelID).then((channel) => {
+			client.channels.fetch(channelID).then((channel) => {
 				channel.send(message);
 			}).catch((err) => {
 				console.log("Failed to get Guild Log Channel.");
@@ -258,7 +283,7 @@ function AdminLog(message){
 		if(config.adminLogChannel == undefined){
 			console.log("Bot missing Admin Log Channel ID. Please add a Channel ID the Bot has access to in config.json with the key 'adminLogChannel'");
 		} else {
-			bot.channels.fetch(config.adminLogChannel).then((channel) => {
+			client.channels.fetch(config.adminLogChannel).then((channel) => {
 				AdminLogChannel = channel;
 				AdminLogChannel.send(message);
 			}).catch((err) => {
@@ -270,15 +295,13 @@ function AdminLog(message){
 	}
 }
 
-function main(){
-	bot.on('ready', () => {
-		console.log("\nConnected as " + bot.user.tag)
-		bot.user.setActivity('~help', { type: 'LISTENING' }).catch(console.error);
-		AdminLog(":white_check_mark: Bot went Online!");
-	});
+function main(OnReady){
+	//When the bot connects call OnReady
+	client.on('ready', OnReady);
 
-	bot.on('message', (message) => {
-		if (message.author == bot.user) {
+	//When Bot Recieves a Message
+	client.on('message', (message) => {
+		if (message.author == client.user) {
 			return
 		}
 		
@@ -289,12 +312,12 @@ function main(){
 
 			//Check bot is not Disabled in Guild.
 			if(DisabledGuilds.includes(message.guild.id)){
-				if(args[0] === 'enable' && message.mentions.has(bot.user.id)){			
+				if(args[0] === 'enable' && message.mentions.has(client.user.id)){			
 					let i = DisabledGuilds.indexOf(message.guild.id);
 					DisabledGuilds.splice(i, i + 1);
-					fs.writeFile('./DisabledGuilds.json', JSON.stringify(DisabledGuilds, undefined, 2), (err) => {});
+					SaveConfig('core', 'disabledguilds', DisabledGuilds);
 					
-					message.channel.send("Alright I'm Enabled! <@" + bot.user.id + ">");
+					message.channel.send("Alright I'm Enabled! <@" + client.user.id + ">");
 					GuildLog(":white_check_mark: Bot Enabled!", message.guild.id);
 					message.react('✅');
 				}
@@ -303,29 +326,29 @@ function main(){
 			
 			console.log("Command called '" + msg + "'");
 			
-			// Restart, Update, & ForceQuit are special commands that are only callable by the Bot Admin.
+			// Restart & ForceQuit are special commands that are only callable by the Bot Admin.
 			// The Bot Admin is set in the config.json file with the Key 'admin'
 			// The Value is a String with the 18 Digit Discord User ID of the Bot Admin.
 			switch (args[0]){
 				case 'restart':
-					if (message.author.id === botconfig.admin){
-						bot.user.setActivity('Restarting...');
+					if (message.author.id === config.admin){
+						client.user.setActivity('Restarting...');
 						message.channel.send("Restarting...");
 						console.log("Restarting...");
 						AdminLog(":arrows_clockwise: Bot Restarting...");
-						setTimeout(function(){ bot.destroy(); }, 1000);
+						setTimeout(function(){ client.destroy(); }, 1000);
 					}
 					else {
 						message.channel.send("Only the Bot Admin can restart me!");
 					}
 					break;
 				case 'forcequit':
-					if(message.author.id === botconfig.admin){
-						bot.user.setActivity('Shutting Down...');
+					if(message.author.id === config.admin){
+						client.user.setActivity('Shutting Down...');
 						message.channel.send('Shutting Down...');
 						AdminLog(":x: Bot Shutting Down...");
 						fs.writeFile('./temp/QUIT', '', () => {
-							bot.destroy();
+							client.destroy();
 						});
 					} else {
 						message.channel.send("Only the Bot Admin can make me Quit!");
@@ -353,55 +376,146 @@ function main(){
 
     });
     
-    bot.on('messageUpdate', (message) => {
+    client.on('messageUpdate', (message) => {
 
     });
 
-    bot.on('userUpdate', (user) => {
+    client.on('userUpdate', (user) => {
 
     });
 
-    bot.on('messageReactionAdd', (user) => {
+    client.on('messageReactionAdd', (user) => {
 
     });
 
-    bot.on('messageReactionRemove', (user) => {
+    client.on('messageReactionRemove', (user) => {
 
     });
 
-    bot.on('messageReactionRemoveAll', (user) => {
+    client.on('messageReactionRemoveAll', (user) => {
 
     });
 
-    bot.on('messageReactionRemoveEmoji', (user) => {
+    client.on('messageReactionRemoveEmoji', (user) => {
 
     });
 
-    bot.on('messageDelete', (user) => {
+    client.on('messageDelete', (user) => {
 
     });
 	
-	bot.on('error', (err) => {
+	client.on('error', (err) => {
 		console.log("Error Caught: " + err);
 	});
 
 	console.log("Attemping To Login!");
-
-	// fs.readFile('./config.json', (err, file) => {
-	// 	if(!err){
-	// 		var config = JSON.parse(file);
-	// 		bot.login(config.token);
-	// 	}
-	// });
-	bot.login(config.token);
+	client.login(config.token);
 }
 
-//Load Bot Config
-LoadBotConfig(() => {
 
-	//Set Basic Commands
-	//AddCommand('help', Help, 'Do `~help` to see a list of commands or `~help command` to see help for that command.');
+// //Load Bot Config
+// LoadBotConfig(() => {
 
+// 	//Set Basic Commands
+// 	//AddCommand('help', Help, 'Do `~help` to see a list of commands or `~help command` to see help for that command.');
+
+// 	AddCommand('listeners', {
+// 		"func": (context) => {
+// 			if(listeners.has(context.channel.id)){
+// 				context.channel.send("**Current Listeners Here:**\n" + listeners.get(context.channel.id).listener);
+// 			} else {
+// 				context.channel.send("**No Current Listeners Here.**");
+// 			}
+// 		},
+// 		"help": "Displays the Current Listeners to the Channel."
+// 	});
+
+// 	AddCommand('enable', {
+// 		"func": (context) => { context.react('✅') },
+// 		"help": "Enables the @'ed bot in the current Guild. Example: `~enable @botname`"
+// 	});
+
+// 	AddCommand('disable', {
+// 		"func": DisableBotInGuild,
+// 		"help": "Disables the @'ed bot in the current Guild. Example: `~disable @botname`"
+// 	});
+
+// 	AddCommand('writeconfig', {
+// 		//TODO: This is temporary for testing
+// 		"func": (context, args) => {
+// 			SaveConfig(args[1], args[2], JSON.parse(args[3]), args[4]);
+// 		},
+// 		"help": "Sets the Log Channel for this Server."
+// 	});
+
+// 	AddCommand('getconfig', {
+// 		//TODO: This is temporary for testing
+// 		"func": (context, args) => {
+// 			LoadConfig(args[1], args[2], args[3], (err, json) => {
+// 				if(err){
+// 					context.channel.send("Failed to load Config.");
+// 				} else {
+// 					context.channel.send(JSON.stringify(json, undefined, 2));
+// 				}
+// 			});
+// 		},
+// 		"help": "Sets the Log Channel for this Server."
+// 	});
+
+// 	AddCommand('setlog', {
+// 		//TODO: This is temporary until the Config system is implemented.
+// 		"func": (context, args) => { GuildLogChannels.set(context.guild.id, args[1]); context.react('✅'); },
+// 		"help": "Sets the Log Channel for this Server."
+// 	});
+
+// 	AddCommand('clearlog', {
+// 		"func": (context) => { GuildLogChannels.delete(context.guild.id); context.react('✅'); },
+// 		"help": "Clears the Log Channel for this Server."
+// 	});
+
+// 	AddCommand('ping', {
+// 		"func": (context) => { context.channel.send(':ping_pong: Pong!'); },
+// 		"help": "Responds with Pong to check the bot is working!"
+// 	});
+
+// 	AddCommand('uptime', {
+// 		"func": uptime,
+// 		"help": "Displays how long the bot has been Online."
+// 	});
+
+// 	AddCommand('help', {
+// 		"func": Help,
+// 		"help": "Do `~help` to see a list of commands or `~help command` to see help for that command."
+// 	});
+
+// 	//Load Plugins
+// 	LoadPlugins(() => {
+// 		//Load Config
+// 		LoadBotConfig();
+
+// 		//Start Bot
+// 		main();
+// 	});
+// });
+
+//Core Commands
+function InitCoreCommands(){
+	AddCommand('ping', {
+		"func": (context) => { context.channel.send(':ping_pong: Pong!'); },
+		"help": "Responds with Pong to check the bot is working!"
+	});
+	AddCommand('help', {
+		"func": Help,
+		"help": "Do `~help` to see a list of commands or `~help command` to see help for that command."
+	});
+	AddCommand('enable', { //This is just catch the command so it doesn't say it doesn't exist.
+		"func": {},
+		"help": "Enables the @'ed bot in the current Guild. Example: `~enable @botname`"
+	});
+	AddCommand('disable', {
+		"func": DisableBotInGuild,
+		"help": "Disables the @'ed bot in the current Guild. Example: `~disable @botname`"
+	});
 	AddCommand('listeners', {
 		"func": (context) => {
 			if(listeners.has(context.channel.id)){
@@ -410,51 +524,39 @@ LoadBotConfig(() => {
 				context.channel.send("**No Current Listeners Here.**");
 			}
 		},
-		"help": "Displays the Current Listeners to the Channel."
+		"help": "Displays the Current Listeners in the Channel."
+	});
+}
+
+
+//////////////////////////////////////////////////////////////////////
+/////////////////////	Initiate & Connect		/////////////////////
+//////////////////////////////////////////////////////////////////////
+
+// 1 - Load Bot Config
+// 2 - Load Guilds the Bot is Disabled In
+// 3 - Load Plugins
+// 4 - Start Bot
+
+//Load Bot Config
+LoadBotConfig(() => {
+	//Load Disabled Guilds
+	LoadConfig('core', 'disabledguilds', undefined, (err, json) => {
+		if(!err) { DisabledGuilds = json; }
 	});
 
-	AddCommand('enable', {
-		"func": (context) => { context.react('✅') },
-		"help": "Enables the @'ed bot in the current Guild. Example: `~enable @botname`"
-	});
-
-	AddCommand('disable', {
-		"func": DisableInGuild,
-		"help": "Disables the @'ed bot in the current Guild. Example: `~disable @botname`"
-	});
-
-	AddCommand('setlog', {
-		//TODO: This is temporary until the Config system is implemented.
-		"func": (context, args) => { GuildLogChannels.set(context.guild.id, args[1]); context.react('✅'); },
-		"help": "Sets the Log Channel for this Server."
-	});
-
-	AddCommand('clearlog', {
-		"func": (context) => { GuildLogChannels.delete(context.guild.id); context.react('✅'); },
-		"help": "Clears the Log Channel for this Server."
-	});
-
-	AddCommand('ping', {
-		"func": (context) => { context.channel.send(':ping_pong: Pong!'); },
-		"help": "Responds with Pong to check the bot is working!"
-	});
-
-	AddCommand('uptime', {
-		"func": uptime,
-		"help": "Displays how long the bot has been Online."
-	});
-
-	AddCommand('help', {
-		"func": Help,
-		"help": "Do `~help` to see a list of commands or `~help command` to see help for that command."
-	});
+	//Init Core Commands
+	InitCoreCommands();
 
 	//Load Plugins
 	LoadPlugins(() => {
-		//Load Config
-		LoadConfig();
-
 		//Start Bot
-		main();
+		main(() => {
+			client.user.setActivity('~help', { type: 'LISTENING' }).catch(console.error);
+			AdminLog(":white_check_mark: Bot went Online!");
+			console.log("\nConnected as " + client.user.tag);
+
+			//Initiate Plugins - Might implement this to allow plugins to initiate once the bot client is connected.
+		});
 	});
 });

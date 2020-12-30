@@ -1,12 +1,9 @@
 //Permission Manager Plugin V1.0
-var exports = module.exports = {};
+var link = module.exports = {};
 
-var commands = new Map();
-
-exports.name = "PermissionManager";
-exports.version = 1.0;
-exports.commands = new Map();
-exports.help = new Map();
+link.name = "PermissionManager";
+link.version = 1.0;
+link.commands = new Map();
 
 //Permission Display
 var permdisplay;
@@ -19,7 +16,7 @@ var SelectedCommand = "";
 function InitiatePermissionEditor(context, args)
 {
     //Check Valid Command
-    if(exports.GetCommands().has(args[1]) == false){
+    if(link.GetCommands().has(args[1]) == false){
         context.channel.send("I'm afraid I don't see a command with that name to edit!");
         return;
     } else {
@@ -35,25 +32,28 @@ function InitiatePermissionEditor(context, args)
     //Clear Old Temp Perms
     TempPerms = [];
 
-    //Start Listening To Channel
-    exports.StartListening(context.channel.id, exports.name, OnEditorInput, (success) => {
-        if(!success){
-            context.channel.send("Sorry! This channel is currently busy...");
-            return;
-        }
-    });
+    //Load Perms
+    link.LoadConfig('permissions', SelectedCommand, context.guild.id, (err, json) => {
+        //Get Guild Role IDs and populate 
+        context.guild.roles.fetch().then(roles => {
+            //Load Each role & Check for Saves Permission
+            roles.cache.keyArray().forEach(roleid => {
+                TempPerms.push({ "RoleID": roleid, "Allowed": json.includes(roleid) ? true : false });
+            });
 
-    //Get Guild Role IDs and populate 
-    context.guild.roles.fetch().then(roles => {
-        //Populate TempPerms, TODO: Load Saved Perms
-        roles.cache.keyArray().forEach(roleid => {
-            TempPerms.push({ "RoleID": roleid, "Allowed": false });
+            //Initiate Perm Display
+            context.channel.send("**Loading Permission Manager V1.0...**").then( sentmsg => {
+                permdisplay = sentmsg;
+                UpdatePermDisplay();
+            });
         });
 
-        //Initiate Perm Display
-        context.channel.send("**Loading Permission Manager V1.0...**").then( sentmsg => {
-            permdisplay = sentmsg;
-            UpdatePermDisplay();
+        //Start Listening To Channel
+        link.StartListening(context.channel.id, link.name, OnEditorInput, (success) => {
+            if(!success){
+                context.channel.send("Sorry! This channel is currently busy...");
+                return;
+            }
         });
     });
 }
@@ -98,13 +98,23 @@ function OnEditorInput(context){
     var input = context.content.toLowerCase().split(' ');
 
     if(input[0] === 'save'){
-        exports.StopListening(context.channel.id, exports.name);
-        exports.GuildLog("Permissions for the command `~" + SelectedCommand + "` changed.", permdisplay.guild.id);
+        link.StopListening(context.channel.id, link.name);
+        link.GuildLog("Permissions for the command `~" + SelectedCommand + "` changed.", permdisplay.guild.id);
+
+        //We only store the Roles who can run the command
+        let roles = []; //TempPerms.filter(role => role.Allowed == true);
+        TempPerms.forEach((role) => {
+            if(role.Allowed){
+                roles.push(role.RoleID);
+            }
+        });
+
+        link.SaveConfig('permissions', SelectedCommand, roles, context.guild.id);
         permdisplay.edit("Permissions for `~" + SelectedCommand + "` Saved!");
         permdisplay = undefined;
     }
     else if (input[0] === 'cancel'){
-        exports.StopListening(context.channel.id, exports.name);
+        link.StopListening(context.channel.id, link.name);
         permdisplay.edit('Permission Editing Cancelled!');
         permdisplay = undefined;
     }
@@ -182,7 +192,7 @@ function OnEditorInput(context){
 }
 
 //Export Commands
-exports.commands.set('editperm', {
+link.commands.set('editperm', {
     "func": InitiatePermissionEditor,
     "help": "Opens the Permission Editor. Example: `~editperm ping`"
 });
