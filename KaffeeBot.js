@@ -23,7 +23,11 @@ var help = new Map();
 
 var listeners = new Map();
 
-var ReactListeners = new Map();
+//Listeners - These will replace listeners var
+const GuildListeners = new Map();
+const ChannelListeners = new Map();
+
+var PluginInits = [];
 
 //Guilds the Bot is currently Disabled in.
 var DisabledGuilds = [];
@@ -73,6 +77,9 @@ function LoadPlugins(callback){
                 //Link the Functions for Starting and Stopping Listening
                 plugin.StartListening = StartListening;
 				plugin.StopListening = StopListening;
+
+				plugin.StartGuildListener = StartGuildListener;
+				plugin.StopGuildListener = StopGuildListener;
 				
 				//Command Getter/Setter
 				plugin.GetCommands = GetCommands;
@@ -88,6 +95,11 @@ function LoadPlugins(callback){
 				
 				//Pass Bot Client Reference TODO: Maybe don't do this
 				plugin.client = client;
+
+				//Check Init
+				if(plugin.init != undefined){
+					
+				}
 
                 console.log('Success: ' + plugin.name + " V" + (plugin.version).toFixed(1));
 
@@ -188,6 +200,76 @@ function AddCommand(name, data)
 			console.log("Warning: Tried to add the command '" + name + "' but it was missing the function!");
 		}
 	}
+}
+
+/*
+	"788236129584545812": {
+		"listenerone": {
+			"onHeard": function(),
+			"onStopped": function()
+		},
+		"listenertwo": {
+			"onHeard": function(),
+			"onStopped": function()
+		}
+	}
+*/
+
+function GetListeners(context){
+	if(GuildListeners.has(context.guild.id)){
+		let obj = GuildListeners.get(context.guild.id);
+		let msg = "Listeners:\n";
+		Object.keys(obj).forEach(name => {
+			msg += name + '\n';
+		});
+		context.channel.send(msg);
+	} else {
+		context.channel.send("No Listeners Here");
+	}
+}
+
+function StartGuildListener(guildID, name, onHeard, onStopped, callback){
+	//Ensure Lowercase
+	name = name.toLowerCase();
+
+	if(GuildListeners.has(guildID)){
+		let obj = GuildListeners.get(guildID);
+		if(obj[name] != undefined){
+			callback("Listener Already Exists!");
+		} else {
+			obj[name] = {"onHeard": onHeard, "onStopped": onStopped};
+			console.log("Guild Listener Started: " + guildID + " " + name);
+		}
+	} else {
+		let obj = {};
+		obj[name] = {"onHeard": onHeard, "onStopped": onStopped};
+		GuildListeners.set(guildID, obj);
+		console.log("Guild Listener Started: " + guildID + " " + name);
+	}
+}
+
+function StopGuildListener(guildID, name){
+	name = name.toLowerCase();
+
+	if(GuildListeners.has(guildID)){
+		let obj = GuildListeners.get(guildID);
+		if(obj[name] != undefined){
+			if(obj[name].onStopped){
+				obj[name].onStopped();
+			}
+			console.log("Guild Listener Stopped: " + guildID + " " + name);
+			delete obj[name];
+			GuildListeners.set(guildID, obj);
+		}
+	}
+}
+
+function StartChannelListener(channelID, name, onHeard, onStopped, callback){
+	
+}
+
+function StopChannelListener(channelID, name){
+	
 }
 
 function StartListening(channel, listener, onHear, callback){
@@ -367,9 +449,17 @@ function main(OnReady){
         }
         
         //Log Message
-        //console.log(message);
+        //console.log(message.guild.id);
 
-        //Check Listeners
+		//Check Listeners
+		if(GuildListeners.has(message.guild.id)){
+			let obj = GuildListeners.get(message.guild.id);
+			let msg = "Listeners:\n";
+			Object.keys(obj).forEach(name => {
+				obj[name].onHeard(message);
+			});
+		}
+
         if(listeners.has(message.channel.id)){
             listeners.get(message.channel.id).onHear(message);
         }
@@ -517,13 +607,13 @@ function InitCoreCommands(){
 		"help": "Disables the @'ed bot in the current Guild. Example: `~disable @botname`"
 	});
 	AddCommand('listeners', {
-		"func": (context) => {
+		"func": GetListeners, /*=> {
 			if(listeners.has(context.channel.id)){
 				context.channel.send("**Current Listeners Here:**\n" + listeners.get(context.channel.id).listener);
 			} else {
 				context.channel.send("**No Current Listeners Here.**");
 			}
-		},
+		},*/
 		"help": "Displays the Current Listeners in the Channel."
 	});
 }
@@ -560,3 +650,22 @@ LoadBotConfig(() => {
 		});
 	});
 });
+
+//Notes
+/*
+
+{ //Listeners
+	"name": "Listener", //Name of the Listener, Used to stop it.
+	"exclusive": false or true, //Whether this must take exclusive control, only for channel listeners
+	"priority": "0-10", //Used to determin which listener has priority in the stack
+	"desire": "message" or "edit" or "react" or "delete", //What the listener cares about
+	"onHeard": function(), //This is what's called when the listener hears something.
+	"onStop": function() //Called when the Listener is stopped.
+}
+
+//Examples:
+SwearGuard: SwearGuard, Guild, [message, edit], low
+
+Hangman: Hangman, channel, [message], low
+
+*/
